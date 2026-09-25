@@ -2,167 +2,1207 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Supabase Notes</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Idea Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;1,8..60,500&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg: #EDEBE2;
+    --bg-elevated: #F6F4EC;
+    --ink: #22231D;
+    --ink-soft: #6B6A5B;
+    --ink-faint: #9C9A87;
+    --line: #D2CDB9;
+    --line-soft: #E1DDCB;
+
+    --active: #2F6F5E;
+    --active-soft: #DEEBE5;
+    --incubating: #A9762C;
+    --incubating-soft: #F1E6D2;
+    --archived: #7C7A69;
+    --archived-soft: #E7E4D6;
+    --inbox: #47578A;
+    --inbox-soft: #E1E4EF;
+    --danger: #AD4A3C;
+
+    --font-serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+    --font-mono: 'IBM Plex Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+
+    color-scheme: light;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1B1B17;
+      --bg-elevated: #242420;
+      --ink: #EDEBE0;
+      --ink-soft: #ABA894;
+      --ink-faint: #797766;
+      --line: #3A392F;
+      --line-soft: #2C2B24;
+
+      --active: #6FBBA3;
+      --active-soft: #23342E;
+      --incubating: #D9A75B;
+      --incubating-soft: #362C1C;
+      --archived: #A6A38E;
+      --archived-soft: #2C2B23;
+      --inbox: #93A2D6;
+      --inbox-soft: #232839;
+      --danger: #DA8577;
+      color-scheme: dark;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #1B1B17;
+    --bg-elevated: #242420;
+    --ink: #EDEBE0;
+    --ink-soft: #ABA894;
+    --ink-faint: #797766;
+    --line: #3A392F;
+    --line-soft: #2C2B24;
+
+    --active: #6FBBA3;
+    --active-soft: #23342E;
+    --incubating: #D9A75B;
+    --incubating-soft: #362C1C;
+    --archived: #A6A38E;
+    --archived-soft: #2C2B23;
+    --inbox: #93A2D6;
+    --inbox-soft: #232839;
+    --danger: #DA8577;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+
+  html {
+    scroll-padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-serif);
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 0 20px 80px;
+  }
+
+  /* ---------- Header ---------- */
+  header {
+    padding: 40px 0 22px;
+    border-bottom: 1px solid var(--line);
+  }
+  .masthead {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  h1 {
+    font-size: 28px;
+    font-weight: 600;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  .tally {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--ink-faint);
+    white-space: nowrap;
+  }
+  .tagline {
+    margin: 6px 0 0;
+    color: var(--ink-soft);
+    font-size: 15px;
+    font-style: italic;
+  }
+
+  /* ---------- Capture bar ---------- */
+  .capture {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 5;
+    background: var(--bg);
+    padding: 18px 0 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  .capture-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .capture input[type="text"] {
+    flex: 1;
+    font-family: var(--font-serif);
+    font-size: 16px;
+    padding: 11px 13px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: var(--bg-elevated);
+    color: var(--ink);
+  }
+  .capture input[type="text"]:focus {
+    outline: 2px solid var(--inbox);
+    outline-offset: 1px;
+  }
+  .gut-picker {
+    display: flex;
+    gap: 3px;
+    padding: 0 2px;
+  }
+  .gut-dot {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    background: transparent;
+    cursor: pointer;
+    padding: 0;
+  }
+  .gut-dot[aria-pressed="true"] {
+    background: var(--inbox);
+    border-color: var(--inbox);
+  }
+  .gut-dot:focus-visible {
+    outline: 2px solid var(--inbox);
+    outline-offset: 2px;
+  }
+  .log-btn {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 11px 16px;
+    border: 1px solid var(--ink);
+    background: var(--ink);
+    color: var(--bg);
+    border-radius: 3px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .log-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+  .capture-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--ink-faint);
+    font-family: var(--font-mono);
+  }
+  .trigger-toggle {
+    background: none;
+    border: none;
+    color: var(--ink-faint);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 0;
+  }
+  .trigger-field {
+    margin-top: 8px;
+    display: none;
+  }
+  .trigger-field.open { display: block; }
+  .trigger-field input {
+    width: 100%;
+    font-family: var(--font-serif);
+    font-size: 13px;
+    padding: 8px 10px;
+    border: 1px solid var(--line-soft);
+    border-radius: 3px;
+    background: var(--bg-elevated);
+    color: var(--ink-soft);
+  }
+
+  /* ---------- Tabs ---------- */
+  .tabs {
+    display: flex;
+    gap: 2px;
+    margin-top: 18px;
+    border-bottom: 1px solid var(--line);
+    overflow-x: auto;
+  }
+  .tab {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    padding: 9px 12px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--ink-faint);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .tab.active {
+    color: var(--ink);
+    border-bottom-color: var(--ink);
+  }
+  .tab .count {
+    color: var(--ink-faint);
+  }
+
+  .toolbar {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+    align-items: center;
+  }
+  .search-input {
+    flex: 1;
+    font-family: var(--font-serif);
+    font-size: 14px;
+    padding: 8px 11px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: var(--bg-elevated);
+    color: var(--ink);
+  }
+  .review-btn {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 8px 12px;
+    border: 1px solid var(--incubating);
+    color: var(--incubating);
+    background: var(--incubating-soft);
+    border-radius: 3px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .review-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+
+  /* ---------- List ---------- */
+  .list {
+    margin-top: 6px;
+  }
+  .empty {
+    padding: 48px 8px;
+    text-align: center;
+    color: var(--ink-faint);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .empty strong { color: var(--ink-soft); }
+
+  .row {
+    border-bottom: 1px solid var(--line-soft);
+    padding: 14px 2px;
+    cursor: pointer;
+  }
+  .row-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .bucket-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-top: 7px;
+    flex-shrink: 0;
+  }
+  .bucket-dot.inbox { background: var(--inbox); }
+  .bucket-dot.active { background: var(--active); }
+  .bucket-dot.incubating { background: var(--incubating); }
+  .bucket-dot.archived { background: var(--archived); }
+
+  .row-title-block { flex: 1; min-width: 0; }
+  .row-title {
+    font-size: 16px;
+    line-height: 1.4;
+  }
+  .row-sub {
+    margin-top: 3px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-faint);
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .row-gut {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-faint);
+    flex-shrink: 0;
+    padding-top: 2px;
+  }
+
+  .row-detail {
+    display: none;
+    margin: 12px 0 4px 18px;
+    padding: 12px 14px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--line-soft);
+    border-radius: 4px;
+  }
+  .row.expanded .row-detail { display: block; }
+  .detail-field { margin-bottom: 10px; }
+  .detail-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ink-faint);
+    display: block;
+    margin-bottom: 4px;
+  }
+  .detail-value {
+    font-size: 14px;
+    color: var(--ink-soft);
+    line-height: 1.5;
+  }
+  .detail-value.empty-val { font-style: italic; color: var(--ink-faint); }
+  .note-input {
+    width: 100%;
+    font-family: var(--font-serif);
+    font-size: 13.5px;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: var(--bg);
+    color: var(--ink);
+    resize: vertical;
+    min-height: 44px;
+  }
+  .detail-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .pill-btn {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    padding: 6px 10px;
+    border-radius: 3px;
+    border: 1px solid var(--line);
+    background: var(--bg);
+    color: var(--ink-soft);
+    cursor: pointer;
+  }
+  .pill-btn.to-active { border-color: var(--active); color: var(--active); }
+  .pill-btn.to-incubating { border-color: var(--incubating); color: var(--incubating); }
+  .pill-btn.to-archived { border-color: var(--archived); color: var(--archived); }
+  .pill-btn.to-inbox { border-color: var(--inbox); color: var(--inbox); }
+  .pill-btn.delete { border-color: var(--danger); color: var(--danger); margin-left: auto; }
+
+  .revisit-flag {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 8px;
+    background: var(--incubating-soft);
+    color: var(--incubating);
+  }
+
+  /* ---------- Review mode ---------- */
+  .review-panel {
+    display: none;
+    margin-top: 16px;
+    padding: 22px 20px 20px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+  }
+  .review-panel.open { display: block; }
+  .review-progress {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-faint);
+    margin-bottom: 14px;
+  }
+  .review-idea-title {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0 0 4px;
+  }
+  .review-idea-trigger {
+    font-size: 13px;
+    color: var(--ink-soft);
+    font-style: italic;
+    margin: 0 0 18px;
+  }
+  .review-question {
+    font-size: 15px;
+    margin: 0 0 12px;
+    color: var(--ink);
+  }
+  .review-hint {
+    font-size: 12.5px;
+    color: var(--ink-faint);
+    margin: -6px 0 14px;
+  }
+  .review-choices {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .review-choice {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    padding: 10px 16px;
+    border-radius: 4px;
+    border: 1px solid var(--line);
+    background: var(--bg);
+    color: var(--ink);
+    cursor: pointer;
+  }
+  .review-choice.yes { border-color: var(--active); color: var(--active); }
+  .review-choice.no { border-color: var(--danger); color: var(--danger); }
+  .review-matches {
+    margin: 10px 0 16px;
+    padding: 10px 12px;
+    background: var(--bg);
+    border: 1px solid var(--line-soft);
+    border-radius: 4px;
+    max-height: 140px;
+    overflow-y: auto;
+  }
+  .review-match {
+    font-size: 12.5px;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--line-soft);
+    color: var(--ink-soft);
+  }
+  .review-match:last-child { border-bottom: none; }
+  .review-panel textarea.review-note {
+    width: 100%;
+    font-family: var(--font-serif);
+    font-size: 14px;
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 50px;
+    margin-bottom: 14px;
+  }
+  .review-done {
+    text-align: center;
+    padding: 10px 0 4px;
+  }
+  .review-done h3 { margin: 0 0 6px; font-size: 19px; }
+  .review-done p { margin: 0 0 16px; color: var(--ink-soft); font-size: 14px; }
+  .review-summary {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+  }
+  .close-review {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 9px 16px;
+    border: 1px solid var(--ink);
+    background: var(--ink);
+    color: var(--bg);
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .skip-link {
+    display: block;
+    text-align: center;
+    margin-top: 14px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-faint);
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-decoration: underline;
+  }
+
+  ::selection { background: var(--incubating-soft); }
+</style>
 </head>
 <body>
-
-<h1>Notes</h1>
-
-<!-- ====== CONFIG: put your project values here ====== -->
 <script>
   const SUPABASE_URL = "https://ywyacmekrccadjdyirau.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl3eWFjbWVrcmNjYWRqZHlpcmF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzMDQxMTgsImV4cCI6MjEwNTg4MDExOH0.EzRtqh4b_bT6GUqEpPlKM2T3trkboun7F5J_ysens-I";
 </script>
-<!-- ==================================================== -->
 
-<div id="auth-section">
-  <h2>Sign in / Sign up</h2>
-  <input id="email" type="email" placeholder="email" />
-  <input id="password" type="password" placeholder="password" />
-  <button onclick="signUp()">Sign Up</button>
-  <button onclick="signIn()">Sign In</button>
-  <p id="auth-status"></p>
+<div class="wrap" id="auth-section">
+  <header>
+    <div class="masthead">
+      <h1>Idea Ledger</h1>
+    </div>
+    <p class="tagline">Capture fast. Judge later. Never lose the thread.</p>
+  </header>
+  <div class="capture" style="position:static;">
+    <div class="capture-row">
+      <input type="email" id="authEmail" placeholder="email" autocomplete="email">
+    </div>
+    <div class="capture-row" style="margin-top:8px;">
+      <input type="password" id="authPassword" placeholder="password" autocomplete="current-password">
+    </div>
+    <div class="capture-meta" style="margin-top:12px;">
+      <button class="log-btn" id="signInBtn" type="button" style="opacity:1;">Sign In</button>
+      <button class="log-btn" id="signUpBtn" type="button" style="background:transparent;color:var(--ink);">Sign Up</button>
+    </div>
+    <p id="authStatus" style="font-family:var(--font-mono);font-size:12px;color:var(--ink-faint);margin-top:10px;"></p>
+  </div>
 </div>
 
-<div id="notes-section" style="display:none">
-  <p>Signed in as <span id="user-email"></span>
-    <button onclick="signOut()">Sign Out</button>
-  </p>
+<div class="wrap" id="app" style="display:none">
 
-  <h2>New note</h2>
-  <input id="new-title" placeholder="Title" />
-  <br />
-  <textarea id="new-body" placeholder="Body"></textarea>
-  <br />
-  <button onclick="createNote()">Add Note</button>
+  <header>
+    <div class="masthead">
+      <h1>Idea Ledger</h1>
+      <span class="tally" id="tally"></span>
+    </div>
+    <p class="tagline">Capture fast. Judge later. Never lose the thread.</p>
+    <p class="tagline" style="font-size:12px;font-style:normal;color:var(--ink-faint);margin-top:6px;">
+      Signed in as <span id="userEmail"></span> · <button class="trigger-toggle" id="signOutBtn" type="button">sign out</button>
+    </p>
+  </header>
 
-  <h2>Your notes</h2>
-  <div id="notes-list"></div>
+  <div class="capture">
+    <div class="capture-row">
+      <input type="text" id="captureInput" placeholder="What's the idea?" maxlength="200" autocomplete="off">
+      <div class="gut-picker" id="gutPicker" role="group" aria-label="Gut excitement, 1 to 5"></div>
+      <button class="log-btn" id="logBtn" disabled>Log it</button>
+    </div>
+    <div class="capture-meta">
+      <button class="trigger-toggle" id="triggerToggle">+ what triggered it</button>
+      <span id="gutLabel"></span>
+    </div>
+    <div class="trigger-field" id="triggerField">
+      <input type="text" id="triggerInput" placeholder="e.g. saw a competitor's ad, shower thought…" maxlength="200">
+    </div>
+  </div>
+
+  <nav class="tabs" id="tabs"></nav>
+
+  <div class="toolbar">
+    <input type="text" class="search-input" id="searchInput" placeholder="Search all ideas — check if you've been here before…">
+    <button class="review-btn" id="reviewBtn">Start weekly review</button>
+  </div>
+
+  <div class="review-panel" id="reviewPanel"></div>
+
+  <div class="list" id="list"></div>
+
 </div>
 
 <script>
-  const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+(function(){
+  "use strict";
+
+  var client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  var BUCKETS = ["inbox","active","incubating","archived"];
+  var BUCKET_LABEL = { inbox:"Inbox", active:"Active", incubating:"Incubating", archived:"Archived" };
+
+  var ideas = [];
+  var currentTab = "inbox";
+  var searchTerm = "";
+  var expandedId = null;
+  var reviewQueue = [];
+  var reviewIndex = 0;
+  var reviewSummary = { active:0, incubating:0, archived:0 };
+  var reviewOpen = false;
 
   // ---------- Auth ----------
 
-  async function signUp() {
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-    const { error } = await client.auth.signUp({ email, password });
-    document.getElementById('auth-status').textContent = error
-      ? error.message
-      : "Signed up. Check email if confirmation is required, then sign in.";
+  document.getElementById('signUpBtn').addEventListener('click', function(){ signUp(); });
+  document.getElementById('signInBtn').addEventListener('click', function(){ signIn(); });
+  document.getElementById('signOutBtn').addEventListener('click', function(){ signOut(); });
+
+  function authFields(){
+    return {
+      email: document.getElementById('authEmail').value,
+      password: document.getElementById('authPassword').value
+    };
   }
 
-  async function signIn() {
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-    const { error } = await client.auth.signInWithPassword({ email, password });
-    if (error) {
-      document.getElementById('auth-status').textContent = error.message;
-    } else {
-      onAuthed();
-    }
+  function signUp(){
+    var f = authFields();
+    client.auth.signUp({ email: f.email, password: f.password }).then(function(res){
+      document.getElementById('authStatus').textContent = res.error
+        ? res.error.message
+        : "Signed up. Check email if confirmation is required, then sign in.";
+    });
   }
 
-  async function signOut() {
-    await client.auth.signOut();
-    document.getElementById('auth-section').style.display = 'block';
-    document.getElementById('notes-section').style.display = 'none';
+  function signIn(){
+    var f = authFields();
+    client.auth.signInWithPassword({ email: f.email, password: f.password }).then(function(res){
+      if (res.error){
+        document.getElementById('authStatus').textContent = res.error.message;
+      } else {
+        onAuthed();
+      }
+    });
   }
 
-  async function onAuthed() {
-    const { data: { user } } = await client.auth.getUser();
-    if (!user) return;
-    document.getElementById('auth-section').style.display = 'none';
-    document.getElementById('notes-section').style.display = 'block';
-    document.getElementById('user-email').textContent = user.email;
-    loadNotes();
+  function signOut(){
+    client.auth.signOut().then(function(){
+      document.getElementById('auth-section').style.display = 'block';
+      document.getElementById('app').style.display = 'none';
+    });
   }
 
-  // Restore session on page load (refresh-safe)
-  client.auth.getSession().then(({ data: { session } }) => {
-    if (session) onAuthed();
+  function onAuthed(){
+    client.auth.getUser().then(function(res){
+      var user = res.data.user;
+      if (!user) return;
+      document.getElementById('auth-section').style.display = 'none';
+      document.getElementById('app').style.display = '';
+      document.getElementById('userEmail').textContent = user.email;
+      loadIdeas().then(function(){
+        renderGutPicker();
+        renderAll();
+      });
+    });
+  }
+
+  client.auth.getSession().then(function(res){
+    if (res.data.session) onAuthed();
   });
 
-  // ---------- CRUD ----------
+  // ---------- Data ----------
 
-  async function loadNotes() {
-    const { data, error } = await client
-      .from('notes')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    const list = document.getElementById('notes-list');
-    list.innerHTML = '';
-
-    if (error) {
-      list.textContent = error.message;
-      return;
-    }
-
-    data.forEach(note => {
-      const div = document.createElement('div');
-      div.innerHTML = `
-        <hr>
-        <input value="${escapeHtml(note.title)}" id="title-${note.id}" />
-        <br>
-        <textarea id="body-${note.id}">${escapeHtml(note.body || '')}</textarea>
-        <br>
-        <button onclick="updateNote('${note.id}')">Save</button>
-        <button onclick="deleteNote('${note.id}')">Delete</button>
-      `;
-      list.appendChild(div);
+  function loadIdeas(){
+    return client.from('ideas').select('*').order('created_at', { ascending: false }).then(function(res){
+      ideas = res.error ? [] : res.data;
+      if (res.error) console.error(res.error);
     });
   }
 
-  async function createNote() {
-    const title = document.getElementById('new-title').value;
-    const body = document.getElementById('new-body').value;
-    const { data: { user } } = await client.auth.getUser();
+  function fmtDate(ts){
+    var d = new Date(ts);
+    return d.toLocaleDateString(undefined, { month:'short', day:'numeric', year: (d.getFullYear() !== new Date().getFullYear()) ? 'numeric' : undefined });
+  }
 
-    const { error } = await client.from('notes').insert({
-      title,
-      body,
-      user_id: user.id
+  function daysAgo(ts){
+    var diff = Date.now() - ts;
+    var days = Math.floor(diff / 86400000);
+    if (days <= 0) return "today";
+    if (days === 1) return "1 day ago";
+    return days + " days ago";
+  }
+
+  // ---------- Capture ----------
+  var gutScore = 0;
+  var gutPicker = document.getElementById('gutPicker');
+  var gutLabels = ["", "barely a spark", "mildly curious", "genuinely interested", "pretty excited", "can't stop thinking about it"];
+  for (var g = 1; g <= 5; g++){
+    (function(val){
+      var btn = document.createElement('button');
+      btn.className = 'gut-dot';
+      btn.type = 'button';
+      btn.setAttribute('aria-pressed','false');
+      btn.setAttribute('aria-label', 'Gut score ' + val);
+      btn.addEventListener('click', function(){
+        gutScore = (gutScore === val) ? 0 : val;
+        renderGutPicker();
+      });
+      gutPicker.appendChild(btn);
+    })(g);
+  }
+  function renderGutPicker(){
+    var dots = gutPicker.querySelectorAll('.gut-dot');
+    dots.forEach(function(dot, idx){
+      dot.setAttribute('aria-pressed', (idx+1 <= gutScore) ? 'true' : 'false');
     });
+    document.getElementById('gutLabel').textContent = gutScore ? gutLabels[gutScore] : "";
+    document.getElementById('logBtn').disabled = !document.getElementById('captureInput').value.trim();
+  }
 
-    if (error) {
-      alert(error.message);
+  var triggerToggle = document.getElementById('triggerToggle');
+  var triggerField = document.getElementById('triggerField');
+  triggerToggle.addEventListener('click', function(){
+    var open = triggerField.classList.toggle('open');
+    triggerToggle.textContent = open ? "− hide trigger" : "+ what triggered it";
+    if (open) document.getElementById('triggerInput').focus();
+  });
+
+  var captureInput = document.getElementById('captureInput');
+  captureInput.addEventListener('input', function(){
+    document.getElementById('logBtn').disabled = !captureInput.value.trim();
+  });
+  captureInput.addEventListener('keydown', function(e){
+    if (e.key === 'Enter') logIdea();
+  });
+  document.getElementById('logBtn').addEventListener('click', logIdea);
+
+  function logIdea(){
+    var title = captureInput.value.trim();
+    if (!title) return;
+    var trigger_note = document.getElementById('triggerInput').value.trim();
+    var savedGutScore = gutScore || null;
+    client.auth.getUser().then(function(res){
+      var user = res.data.user;
+      return client.from('ideas').insert({
+        title: title,
+        trigger_note: trigger_note,
+        gut_score: savedGutScore,
+        bucket: "inbox",
+        note: "",
+        loss_note: "",
+        user_id: user.id
+      }).select().single();
+    }).then(function(res){
+      if (res.error){ alert(res.error.message); return; }
+      ideas.unshift(res.data);
+      currentTab = "inbox";
+      renderAll();
+    });
+    captureInput.value = "";
+    document.getElementById('triggerInput').value = "";
+    gutScore = 0;
+    renderGutPicker();
+    captureInput.focus();
+  }
+
+  // ---------- Tabs ----------
+  var tabsEl = document.getElementById('tabs');
+  function renderTabs(){
+    tabsEl.innerHTML = "";
+    var defs = [
+      {key:"inbox", label:"Inbox"},
+      {key:"active", label:"Active"},
+      {key:"incubating", label:"Incubating"},
+      {key:"archived", label:"Archived"},
+      {key:"all", label:"All"}
+    ];
+    defs.forEach(function(d){
+      var count = d.key === "all" ? ideas.length : ideas.filter(function(i){return i.bucket === d.key;}).length;
+      var btn = document.createElement('button');
+      btn.className = 'tab' + (currentTab === d.key ? ' active' : '');
+      btn.innerHTML = d.label + ' <span class="count">' + count + '</span>';
+      btn.addEventListener('click', function(){
+        currentTab = d.key;
+        expandedId = null;
+        renderAll();
+      });
+      tabsEl.appendChild(btn);
+    });
+  }
+
+  document.getElementById('searchInput').addEventListener('input', function(e){
+    searchTerm = e.target.value.trim().toLowerCase();
+    if (searchTerm) currentTab = "all";
+    renderAll();
+  });
+
+  // ---------- List ----------
+  var listEl = document.getElementById('list');
+
+  function matchesSearch(idea){
+    if (!searchTerm) return true;
+    var hay = (idea.title + " " + idea.trigger_note + " " + idea.note + " " + idea.loss_note).toLowerCase();
+    return hay.indexOf(searchTerm) !== -1;
+  }
+
+  function visibleIdeas(){
+    var list = ideas.filter(function(i){
+      var tabMatch = currentTab === "all" ? true : i.bucket === currentTab;
+      return tabMatch && matchesSearch(i);
+    });
+    return list;
+  }
+
+  function renderList(){
+    var list = visibleIdeas();
+    listEl.innerHTML = "";
+
+    if (list.length === 0){
+      var empty = document.createElement('div');
+      empty.className = 'empty';
+      if (searchTerm){
+        empty.innerHTML = "No ideas match <strong>\"" + escapeHtml(searchTerm) + "\"</strong>.<br>Looks like this one's actually new.";
+      } else if (currentTab === "inbox"){
+        empty.innerHTML = "Inbox is clear.<br>Whatever comes to you next, log it above — <strong>don't judge it yet.</strong>";
+      } else if (currentTab === "active"){
+        empty.innerHTML = "Nothing active right now.<br>Run a <strong>weekly review</strong> to promote ideas from your inbox.";
+      } else if (currentTab === "incubating"){
+        empty.innerHTML = "Nothing incubating.<br>Ideas land here when they're worth revisiting but not ready yet.";
+      } else if (currentTab === "archived"){
+        empty.innerHTML = "Nothing archived yet.<br>Dropped ideas go here with a note, so you never re-litigate them.";
+      } else {
+        empty.innerHTML = "No ideas logged yet.<br>Start with whatever's rattling around in your head right now.";
+      }
+      listEl.appendChild(empty);
       return;
     }
 
-    document.getElementById('new-title').value = '';
-    document.getElementById('new-body').value = '';
-    loadNotes();
+    list.forEach(function(idea){
+      listEl.appendChild(renderRow(idea));
+    });
   }
 
-  async function updateNote(id) {
-    const title = document.getElementById(`title-${id}`).value;
-    const body = document.getElementById(`body-${id}`).value;
-
-    const { error } = await client
-      .from('notes')
-      .update({ title, body })
-      .eq('id', id);
-
-    if (error) alert(error.message);
-    loadNotes();
+  function escapeHtml(s){
+    var div = document.createElement('div');
+    div.textContent = s;
+    return div.innerHTML;
   }
 
-  async function deleteNote(id) {
-    const { error } = await client.from('notes').delete().eq('id', id);
-    if (error) alert(error.message);
-    loadNotes();
+  function renderRow(idea){
+    var row = document.createElement('div');
+    row.className = 'row' + (expandedId === idea.id ? ' expanded' : '');
+
+    var due = idea.bucket === 'incubating' && idea.revisit_at && new Date(idea.revisit_at).getTime() <= Date.now();
+
+    var head = document.createElement('div');
+    head.className = 'row-head';
+    head.innerHTML =
+      '<span class="bucket-dot ' + idea.bucket + '"></span>' +
+      '<div class="row-title-block">' +
+        '<div class="row-title">' + escapeHtml(idea.title) + '</div>' +
+        '<div class="row-sub">' +
+          '<span>' + BUCKET_LABEL[idea.bucket] + '</span>' +
+          '<span>logged ' + fmtDate(idea.created_at) + '</span>' +
+          (due ? '<span class="revisit-flag">due for another look</span>' : '') +
+        '</div>' +
+      '</div>' +
+      (idea.gut_score ? '<span class="row-gut">' + '●'.repeat(idea.gut_score) + '○'.repeat(5-idea.gut_score) + '</span>' : '');
+
+    head.addEventListener('click', function(){
+      expandedId = (expandedId === idea.id) ? null : idea.id;
+      renderList();
+    });
+    row.appendChild(head);
+
+    if (expandedId === idea.id){
+      row.appendChild(renderDetail(idea));
+    }
+
+    return row;
   }
 
-  function escapeHtml(str) {
-    return str.replace(/[&<>"']/g, c => ({
-      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-    }[c]));
+  function renderDetail(idea){
+    var detail = document.createElement('div');
+    detail.className = 'row-detail';
+    detail.addEventListener('click', function(e){ e.stopPropagation(); });
+
+    var triggerHtml = idea.trigger_note
+      ? '<div class="detail-value">' + escapeHtml(idea.trigger_note) + '</div>'
+      : '<div class="detail-value empty-val">not recorded</div>';
+
+    detail.innerHTML =
+      '<div class="detail-field">' +
+        '<span class="detail-label">Trigger</span>' + triggerHtml +
+      '</div>' +
+      '<div class="detail-field">' +
+        '<span class="detail-label">Note</span>' +
+        '<textarea class="note-input" data-role="note" placeholder="Add a note — reasoning, next step, why you archived it…">' + escapeHtml(idea.note || "") + '</textarea>' +
+      '</div>';
+
+    var actions = document.createElement('div');
+    actions.className = 'detail-actions';
+
+    BUCKETS.forEach(function(b){
+      if (b === idea.bucket) return;
+      var btn = document.createElement('button');
+      btn.className = 'pill-btn to-' + b;
+      btn.textContent = '→ ' + BUCKET_LABEL[b];
+      btn.addEventListener('click', function(){
+        moveIdea(idea.id, b);
+      });
+      actions.appendChild(btn);
+    });
+
+    var del = document.createElement('button');
+    del.className = 'pill-btn delete';
+    del.textContent = 'Delete';
+    del.addEventListener('click', function(){
+      if (confirm('Delete "' + idea.title + '" permanently?')){
+        client.from('ideas').delete().eq('id', idea.id).then(function(res){
+          if (res.error){ alert(res.error.message); return; }
+          ideas = ideas.filter(function(i){ return i.id !== idea.id; });
+          expandedId = null;
+          renderAll();
+        });
+      }
+    });
+    actions.appendChild(del);
+
+    detail.appendChild(actions);
+
+    var noteArea = detail.querySelector('[data-role="note"]');
+    noteArea.addEventListener('blur', function(){
+      var updated_at = new Date().toISOString();
+      client.from('ideas').update({ note: noteArea.value, updated_at: updated_at }).eq('id', idea.id).then(function(res){
+        if (res.error){ alert(res.error.message); return; }
+        idea.note = noteArea.value;
+        idea.updated_at = updated_at;
+      });
+    });
+
+    return detail;
   }
+
+  function moveIdea(id, bucket){
+    var idea = ideas.find(function(i){ return i.id === id; });
+    if (!idea) return;
+    var updated_at = new Date().toISOString();
+    var revisit_at = (bucket === 'incubating') ? new Date(Date.now() + 30*86400000).toISOString() : null;
+    client.from('ideas').update({ bucket: bucket, updated_at: updated_at, revisit_at: revisit_at }).eq('id', id).then(function(res){
+      if (res.error){ alert(res.error.message); return; }
+      idea.bucket = bucket;
+      idea.updated_at = updated_at;
+      idea.revisit_at = revisit_at;
+      renderAll();
+    });
+  }
+
+  // ---------- Weekly review ----------
+  var reviewPanel = document.getElementById('reviewPanel');
+  var reviewBtn = document.getElementById('reviewBtn');
+
+  reviewBtn.addEventListener('click', function(){
+    reviewQueue = ideas.filter(function(i){ return i.bucket === 'inbox'; });
+    reviewIndex = 0;
+    reviewSummary = { active:0, incubating:0, archived:0 };
+    reviewOpen = true;
+    expandedId = null;
+    renderReview();
+    renderAll();
+    reviewPanel.scrollIntoView({behavior:'smooth', block:'start'});
+  });
+
+  function closeReview(){
+    reviewOpen = false;
+    renderAll();
+  }
+
+  function renderReview(){
+    reviewPanel.classList.toggle('open', reviewOpen);
+    if (!reviewOpen) { reviewPanel.innerHTML = ""; return; }
+
+    if (reviewIndex >= reviewQueue.length){
+      renderReviewDone();
+      return;
+    }
+
+    var idea = reviewQueue[reviewIndex];
+    reviewPanel.innerHTML = "";
+
+    var progress = document.createElement('div');
+    progress.className = 'review-progress';
+    progress.textContent = 'Reviewing ' + (reviewIndex+1) + ' of ' + reviewQueue.length;
+    reviewPanel.appendChild(progress);
+
+    var title = document.createElement('h2');
+    title.className = 'review-idea-title';
+    title.textContent = idea.title;
+    reviewPanel.appendChild(title);
+
+    if (idea.trigger_note){
+      var trig = document.createElement('p');
+      trig.className = 'review-idea-trigger';
+      trig.textContent = 'Triggered by: ' + idea.trigger_note;
+      reviewPanel.appendChild(trig);
+    }
+
+    renderReviewQuestion1(idea);
+
+    var skip = document.createElement('button');
+    skip.className = 'skip-link';
+    skip.textContent = 'Skip for now, review this one later';
+    skip.addEventListener('click', function(){
+      reviewIndex++;
+      renderReview();
+    });
+    reviewPanel.appendChild(skip);
+  }
+
+  function addQuestion(text, hint){
+    var q = document.createElement('p');
+    q.className = 'review-question';
+    q.textContent = text;
+    reviewPanel.appendChild(q);
+    if (hint){
+      var h = document.createElement('p');
+      h.className = 'review-hint';
+      h.textContent = hint;
+      reviewPanel.appendChild(h);
+    }
+  }
+
+  function addChoices(choices){
+    var wrap = document.createElement('div');
+    wrap.className = 'review-choices';
+    choices.forEach(function(c){
+      var btn = document.createElement('button');
+      btn.className = 'review-choice ' + (c.kind || '');
+      btn.textContent = c.label;
+      btn.addEventListener('click', c.onClick);
+      wrap.appendChild(btn);
+    });
+    reviewPanel.appendChild(wrap);
+    return wrap;
+  }
+
+  function finishReviewItem(bucket, note){
+    var idea = reviewQueue[reviewIndex];
+    var updated_at = new Date().toISOString();
+    var revisit_at = (bucket === 'incubating') ? new Date(Date.now() + 30*86400000).toISOString() : null;
+    var newNote = note ? (idea.note ? (idea.note + " — " + note) : note) : idea.note;
+    client.from('ideas').update({ bucket: bucket, note: newNote, updated_at: updated_at, revisit_at: revisit_at }).eq('id', idea.id).then(function(res){
+      if (res.error){ alert(res.error.message); return; }
+      idea.bucket = bucket;
+      idea.note = newNote;
+      idea.updated_at = updated_at;
+      idea.revisit_at = revisit_at;
+      reviewSummary[bucket] = (reviewSummary[bucket] || 0) + 1;
+      reviewIndex++;
+      renderReview();
+      renderAll();
+    });
+  }
+
+  function renderReviewQuestion1(idea){
+    addQuestion("Have you already tried or seriously considered this before?", "Check the matches below if the title rings a bell.");
+
+    var term = idea.title.split(' ').slice(0,3).join(' ').toLowerCase();
+    var matches = ideas.filter(function(i){
+      return i.id !== idea.id && (i.bucket === 'archived' || i.bucket === 'active') &&
+        (i.title.toLowerCase().indexOf(term.split(' ')[0]) !== -1);
+    }).slice(0,4);
+
+    if (matches.length){
+      var box = document.createElement('div');
+      box.className = 'review-matches';
+      matches.forEach(function(m){
+        var row = document.createElement('div');
+        row.className = 'review-match';
+        row.textContent = m.title + ' — ' + BUCKET_LABEL[m.bucket] + (m.note ? ': ' + m.note : '');
+        box.appendChild(row);
+      });
+      reviewPanel.appendChild(box);
+    }
+
+    addChoices([
+      { label: "Yes — already been here", kind:"no", onClick: function(){
+          finishReviewItem('archived', 'Duplicate — already explored');
+        }},
+      { label: "No — this is new", kind:"yes", onClick: function(){
+          renderReviewQuestion2(idea);
+        }}
+    ]);
+  }
+
+  function clearBelow(fromEl){
+    while (reviewPanel.lastChild && reviewPanel.lastChild !== fromEl && !reviewPanel.lastChild.classList.contains('review-idea-title') && !reviewPanel.lastChild.classList.contains('review-idea-trigger') && !reviewPanel.lastChild.classList.contains('review-progress')){
+      reviewPanel.removeChild(reviewPanel.lastChild);
+    }
+  }
+
+  function resetPanelKeepHeader(){
+    var keep = reviewPanel.querySelectorAll('.review-progress, .review-idea-title, .review-idea-trigger');
+    reviewPanel.innerHTML = "";
+    keep.forEach(function(el){ reviewPanel.appendChild(el); });
+  }
+
+  function renderReviewQuestion2(idea){
+    resetPanelKeepHeader();
+    addQuestion("Still excited about it today — cold, not just in the heat of the moment?");
+    addChoices([
+      { label: "No, it's faded", kind:"no", onClick: function(){
+          finishReviewItem('archived', 'Lost the spark on review');
+        }},
+      { label: "Yes, still into it", kind:"yes", onClick: function(){
+          renderReviewQuestion3(idea);
+        }}
+    ]);
+    var skip = reviewPanel.querySelector('.skip-link') || makeSkip();
+  }
+
+  function renderReviewQuestion3(idea){
+    resetPanelKeepHeader();
+    addQuestion("Can you name a small test for this — something under an hour?");
+    addChoices([
+      { label: "Not yet", kind:"no", onClick: function(){
+          finishReviewItem('incubating', 'Not ready — no small test yet. Revisit in a month.');
+        }},
+      { label: "Yes, I know the first step", kind:"yes", onClick: function(){
+          renderReviewQuestion4(idea);
+        }}
+    ]);
+  }
+
+  function renderReviewQuestion4(idea){
+    resetPanelKeepHeader();
+    addQuestion("Last one: what would you lose by dropping it?");
+    var note = document.createElement('textarea');
+    note.className = 'review-note';
+    note.placeholder = "Optional — jot it down if something comes to mind";
+    reviewPanel.appendChild(note);
+    addChoices([
+      { label: "Honestly, nothing — drop it", kind:"no", onClick: function(){
+          finishReviewItem('archived', note.value || 'Nothing to lose by dropping it');
+        }},
+      { label: "Something — move to Active", kind:"yes", onClick: function(){
+          finishReviewItem('active', note.value);
+        }}
+    ]);
+  }
+
+  function makeSkip(){ return null; }
+
+  function renderReviewDone(){
+    reviewPanel.innerHTML = "";
+    var done = document.createElement('div');
+    done.className = 'review-done';
+    var total = reviewSummary.active + reviewSummary.incubating + reviewSummary.archived;
+    done.innerHTML =
+      '<h3>Review complete</h3>' +
+      '<p>' + (total ? ('You sorted ' + total + ' idea' + (total===1?'':'s') + '.') : 'Nothing was in your inbox.') + '</p>' +
+      '<div class="review-summary">' +
+        '<span>Active: ' + reviewSummary.active + '</span>' +
+        '<span>Incubating: ' + reviewSummary.incubating + '</span>' +
+        '<span>Archived: ' + reviewSummary.archived + '</span>' +
+      '</div>';
+    var closeBtn = document.createElement('button');
+    closeBtn.className = 'close-review';
+    closeBtn.textContent = 'Back to the ledger';
+    closeBtn.addEventListener('click', closeReview);
+    done.appendChild(closeBtn);
+    reviewPanel.appendChild(done);
+  }
+
+  // ---------- Render root ----------
+  function renderTally(){
+    document.getElementById('tally').textContent =
+      ideas.length + ' logged · ' + ideas.filter(function(i){return i.bucket==='active';}).length + ' active';
+  }
+
+  function renderAll(){
+    renderTabs();
+    renderList();
+    renderTally();
+    reviewBtn.disabled = ideas.filter(function(i){return i.bucket==='inbox';}).length === 0 && !reviewOpen;
+    reviewBtn.textContent = reviewOpen ? 'Reviewing…' : ('Start weekly review (' + ideas.filter(function(i){return i.bucket==='inbox';}).length + ')');
+  }
+
+  renderGutPicker();
+
+})();
 </script>
-
 </body>
 </html>
