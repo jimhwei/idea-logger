@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Supabase Notes</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<h1>Notes</h1>
+
+<!-- ====== CONFIG: put your project values here ====== -->
+<script>
+  const SUPABASE_URL = "https://ywyacmekrccadjdyirau.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl3eWFjbWVrcmNjYWRqZHlpcmF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzMDQxMTgsImV4cCI6MjEwNTg4MDExOH0.EzRtqh4b_bT6GUqEpPlKM2T3trkboun7F5J_ysens-I";
+</script>
+<!-- ==================================================== -->
+
+<div id="auth-section">
+  <h2>Sign in / Sign up</h2>
+  <input id="email" type="email" placeholder="email" />
+  <input id="password" type="password" placeholder="password" />
+  <button onclick="signUp()">Sign Up</button>
+  <button onclick="signIn()">Sign In</button>
+  <p id="auth-status"></p>
+</div>
+
+<div id="notes-section" style="display:none">
+  <p>Signed in as <span id="user-email"></span>
+    <button onclick="signOut()">Sign Out</button>
+  </p>
+
+  <h2>New note</h2>
+  <input id="new-title" placeholder="Title" />
+  <br />
+  <textarea id="new-body" placeholder="Body"></textarea>
+  <br />
+  <button onclick="createNote()">Add Note</button>
+
+  <h2>Your notes</h2>
+  <div id="notes-list"></div>
+</div>
+
+<script>
+  const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // ---------- Auth ----------
+
+  async function signUp() {
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const { error } = await client.auth.signUp({ email, password });
+    document.getElementById('auth-status').textContent = error
+      ? error.message
+      : "Signed up. Check email if confirmation is required, then sign in.";
+  }
+
+  async function signIn() {
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const { error } = await client.auth.signInWithPassword({ email, password });
+    if (error) {
+      document.getElementById('auth-status').textContent = error.message;
+    } else {
+      onAuthed();
+    }
+  }
+
+  async function signOut() {
+    await client.auth.signOut();
+    document.getElementById('auth-section').style.display = 'block';
+    document.getElementById('notes-section').style.display = 'none';
+  }
+
+  async function onAuthed() {
+    const { data: { user } } = await client.auth.getUser();
+    if (!user) return;
+    document.getElementById('auth-section').style.display = 'none';
+    document.getElementById('notes-section').style.display = 'block';
+    document.getElementById('user-email').textContent = user.email;
+    loadNotes();
+  }
+
+  // Restore session on page load (refresh-safe)
+  client.auth.getSession().then(({ data: { session } }) => {
+    if (session) onAuthed();
+  });
+
+  // ---------- CRUD ----------
+
+  async function loadNotes() {
+    const { data, error } = await client
+      .from('notes')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    const list = document.getElementById('notes-list');
+    list.innerHTML = '';
+
+    if (error) {
+      list.textContent = error.message;
+      return;
+    }
+
+    data.forEach(note => {
+      const div = document.createElement('div');
+      div.innerHTML = `
+        <hr>
+        <input value="${escapeHtml(note.title)}" id="title-${note.id}" />
+        <br>
+        <textarea id="body-${note.id}">${escapeHtml(note.body || '')}</textarea>
+        <br>
+        <button onclick="updateNote('${note.id}')">Save</button>
+        <button onclick="deleteNote('${note.id}')">Delete</button>
+      `;
+      list.appendChild(div);
+    });
+  }
+
+  async function createNote() {
+    const title = document.getElementById('new-title').value;
+    const body = document.getElementById('new-body').value;
+    const { data: { user } } = await client.auth.getUser();
+
+    const { error } = await client.from('notes').insert({
+      title,
+      body,
+      user_id: user.id
+    });
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    document.getElementById('new-title').value = '';
+    document.getElementById('new-body').value = '';
+    loadNotes();
+  }
+
+  async function updateNote(id) {
+    const title = document.getElementById(`title-${id}`).value;
+    const body = document.getElementById(`body-${id}`).value;
+
+    const { error } = await client
+      .from('notes')
+      .update({ title, body })
+      .eq('id', id);
+
+    if (error) alert(error.message);
+    loadNotes();
+  }
+
+  async function deleteNote(id) {
+    const { error } = await client.from('notes').delete().eq('id', id);
+    if (error) alert(error.message);
+    loadNotes();
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  }
+</script>
+
+</body>
+</html>
