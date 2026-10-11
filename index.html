@@ -406,6 +406,17 @@
   .pill-btn.to-inbox { border-color: var(--inbox); color: var(--inbox); }
   .pill-btn.delete { border-color: var(--danger); color: var(--danger); margin-left: auto; }
 
+  .detail-gut {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .detail-gut-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-faint);
+  }
+
   .revisit-flag {
     display: inline-block;
     font-family: var(--font-mono);
@@ -1040,6 +1051,8 @@
         '<textarea class="note-input" data-role="note" placeholder="Add a note — reasoning, next step, why you archived it…">' + escapeHtml(idea.note || "") + '</textarea>' +
       '</div>';
 
+    detail.insertBefore(renderDetailGut(idea), detail.lastChild);
+
     var actions = document.createElement('div');
     actions.className = 'detail-actions';
 
@@ -1082,6 +1095,79 @@
     });
 
     return detail;
+  }
+
+  function renderDetailGut(idea){
+    var field = document.createElement('div');
+    field.className = 'detail-field';
+
+    var label = document.createElement('span');
+    label.className = 'detail-label';
+    label.textContent = 'Gut';
+    field.appendChild(label);
+
+    var row = document.createElement('div');
+    row.className = 'detail-gut';
+
+    var picker = document.createElement('div');
+    picker.className = 'gut-picker';
+    picker.setAttribute('role', 'group');
+    picker.setAttribute('aria-label', 'Gut excitement, 1 to 5');
+
+    var caption = document.createElement('span');
+    caption.className = 'detail-gut-label';
+
+    var score = idea.gut_score || 0;
+
+    function paint(){
+      var dots = picker.querySelectorAll('.gut-dot');
+      dots.forEach(function(dot, idx){
+        dot.setAttribute('aria-pressed', (idx + 1 <= score) ? 'true' : 'false');
+      });
+      caption.textContent = score ? gutLabels[score] : 'not rated';
+    }
+
+    for (var g = 1; g <= 5; g++){
+      (function(val){
+        var btn = document.createElement('button');
+        btn.className = 'gut-dot';
+        btn.type = 'button';
+        btn.setAttribute('aria-label', 'Gut score ' + val);
+        btn.addEventListener('click', function(){
+          var next = (score === val) ? 0 : val;
+          var saved = next || null;
+          var updated_at = new Date().toISOString();
+          client.from('ideas').update({ gut_score: saved, updated_at: updated_at }).eq('id', idea.id).then(function(res){
+            if (res.error){ alert(res.error.message); return; }
+            score = next;
+            idea.gut_score = saved;
+            idea.updated_at = updated_at;
+            paint();
+            var rowGut = field.closest('.row').querySelector('.row-gut');
+            if (saved){
+              var text = '●'.repeat(saved) + '○'.repeat(5 - saved);
+              if (rowGut){
+                rowGut.textContent = text;
+              } else {
+                var span = document.createElement('span');
+                span.className = 'row-gut';
+                span.textContent = text;
+                field.closest('.row').querySelector('.row-head').appendChild(span);
+              }
+            } else if (rowGut){
+              rowGut.remove();
+            }
+          });
+        });
+        picker.appendChild(btn);
+      })(g);
+    }
+
+    row.appendChild(picker);
+    row.appendChild(caption);
+    field.appendChild(row);
+    paint();
+    return field;
   }
 
   function moveIdea(id, bucket){
