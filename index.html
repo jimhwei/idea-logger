@@ -553,15 +553,31 @@
     <p class="tagline">Capture fast. Judge later. Never lose the thread.</p>
   </header>
   <div class="capture" style="position:static;">
-    <div class="capture-row">
+    <div class="capture-row" id="authEmailRow">
       <input type="email" id="authEmail" placeholder="email" autocomplete="email">
     </div>
-    <div class="capture-row" style="margin-top:8px;">
+    <div class="capture-row" id="authPasswordRow" style="margin-top:8px;">
       <input type="password" id="authPassword" placeholder="password" autocomplete="current-password">
     </div>
-    <div class="capture-meta" style="margin-top:12px;">
+    <div class="capture-meta" id="authActions" style="margin-top:12px;">
       <button class="log-btn" id="signInBtn" type="button" style="opacity:1;">Sign In</button>
       <button class="log-btn" id="signUpBtn" type="button" style="background:transparent;color:var(--ink);">Sign Up</button>
+    </div>
+    <button class="skip-link" id="forgotBtn" type="button" style="text-align:left;margin-top:10px;padding:0;">Forgot password?</button>
+    <div class="capture-meta" id="resetRequestActions" style="display:none;margin-top:12px;">
+      <button class="log-btn" id="sendResetBtn" type="button" style="opacity:1;">Send reset link</button>
+      <button class="log-btn" id="backToSignInBtn" type="button" style="background:transparent;color:var(--ink);">Back</button>
+    </div>
+    <div id="newPasswordPanel" style="display:none;">
+      <div class="capture-row">
+        <input type="password" id="newPassword" placeholder="new password" autocomplete="new-password">
+      </div>
+      <div class="capture-row" style="margin-top:8px;">
+        <input type="password" id="newPasswordConfirm" placeholder="confirm password" autocomplete="new-password">
+      </div>
+      <div class="capture-meta" style="margin-top:12px;">
+        <button class="log-btn" id="updatePasswordBtn" type="button" style="opacity:1;">Update password</button>
+      </div>
     </div>
     <p id="authStatus" style="font-family:var(--font-mono);font-size:12px;color:var(--ink-faint);margin-top:10px;"></p>
   </div>
@@ -627,23 +643,67 @@
 
   // ---------- Auth ----------
 
+  var recovering = false;
+
   document.getElementById('signUpBtn').addEventListener('click', function(){ signUp(); });
   document.getElementById('signInBtn').addEventListener('click', function(){ signIn(); });
   document.getElementById('signOutBtn').addEventListener('click', function(){ signOut(); });
+  document.getElementById('forgotBtn').addEventListener('click', function(){ showForgotMode(); });
+  document.getElementById('backToSignInBtn').addEventListener('click', function(){ showSignInMode(); });
+  document.getElementById('sendResetBtn').addEventListener('click', function(){ sendReset(); });
+  document.getElementById('updatePasswordBtn').addEventListener('click', function(){ updatePassword(); });
+
+  function setAuthStatus(msg){
+    document.getElementById('authStatus').textContent = msg;
+  }
 
   function authFields(){
     return {
-      email: document.getElementById('authEmail').value,
+      email: document.getElementById('authEmail').value.trim(),
       password: document.getElementById('authPassword').value
     };
+  }
+
+  function showSignInMode(){
+    recovering = false;
+    document.getElementById('authEmailRow').style.display = '';
+    document.getElementById('authPasswordRow').style.display = '';
+    document.getElementById('authActions').style.display = '';
+    document.getElementById('forgotBtn').style.display = '';
+    document.getElementById('resetRequestActions').style.display = 'none';
+    document.getElementById('newPasswordPanel').style.display = 'none';
+    setAuthStatus('');
+  }
+
+  function showForgotMode(){
+    document.getElementById('authEmailRow').style.display = '';
+    document.getElementById('authPasswordRow').style.display = 'none';
+    document.getElementById('authActions').style.display = 'none';
+    document.getElementById('forgotBtn').style.display = 'none';
+    document.getElementById('resetRequestActions').style.display = '';
+    document.getElementById('newPasswordPanel').style.display = 'none';
+    setAuthStatus('Enter your email and we will send a reset link.');
+  }
+
+  function showSetPasswordMode(){
+    recovering = true;
+    document.getElementById('auth-section').style.display = 'block';
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('authEmailRow').style.display = 'none';
+    document.getElementById('authPasswordRow').style.display = 'none';
+    document.getElementById('authActions').style.display = 'none';
+    document.getElementById('forgotBtn').style.display = 'none';
+    document.getElementById('resetRequestActions').style.display = 'none';
+    document.getElementById('newPasswordPanel').style.display = '';
+    setAuthStatus('Choose a new password.');
   }
 
   function signUp(){
     var f = authFields();
     client.auth.signUp({ email: f.email, password: f.password }).then(function(res){
-      document.getElementById('authStatus').textContent = res.error
+      setAuthStatus(res.error
         ? res.error.message
-        : "Signed up. Check email if confirmation is required, then sign in.";
+        : "Signed up. Check email if confirmation is required, then sign in.");
     });
   }
 
@@ -651,21 +711,62 @@
     var f = authFields();
     client.auth.signInWithPassword({ email: f.email, password: f.password }).then(function(res){
       if (res.error){
-        document.getElementById('authStatus').textContent = res.error.message;
+        setAuthStatus(res.error.message);
       } else {
         onAuthed();
       }
     });
   }
 
+  function sendReset(){
+    var email = authFields().email;
+    if (!email){
+      setAuthStatus('Enter your email first.');
+      return;
+    }
+    var redirectTo = window.location.origin + window.location.pathname;
+    client.auth.resetPasswordForEmail(email, { redirectTo: redirectTo }).then(function(res){
+      setAuthStatus(res.error
+        ? res.error.message
+        : 'Reset link sent. Check your email.');
+    });
+  }
+
+  function updatePassword(){
+    var p = document.getElementById('newPassword').value;
+    var c = document.getElementById('newPasswordConfirm').value;
+    if (!p || p.length < 6){
+      setAuthStatus('Password must be at least 6 characters.');
+      return;
+    }
+    if (p !== c){
+      setAuthStatus('Passwords do not match.');
+      return;
+    }
+    client.auth.updateUser({ password: p }).then(function(res){
+      if (res.error){
+        setAuthStatus(res.error.message);
+        return;
+      }
+      recovering = false;
+      if (window.history.replaceState){
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+      onAuthed();
+    });
+  }
+
   function signOut(){
+    recovering = false;
     client.auth.signOut().then(function(){
+      showSignInMode();
       document.getElementById('auth-section').style.display = 'block';
       document.getElementById('app').style.display = 'none';
     });
   }
 
   function onAuthed(){
+    if (recovering) return;
     client.auth.getUser().then(function(res){
       var user = res.data.user;
       if (!user) return;
@@ -679,9 +780,36 @@
     });
   }
 
-  client.auth.getSession().then(function(res){
-    if (res.data.session) onAuthed();
+  function pendingAuthRedirect(){
+    var hash = (window.location.hash || '').replace(/^#/, '');
+    var hashParams = new URLSearchParams(hash);
+    if (hashParams.get('type') === 'recovery') return 'recovery';
+    if (hashParams.get('access_token') || hashParams.get('error')) return 'hash';
+    var query = new URLSearchParams(window.location.search);
+    if (query.get('code') || query.get('error')) return 'code';
+    return null;
+  }
+
+  var redirectKind = pendingAuthRedirect();
+
+  client.auth.onAuthStateChange(function(event, session){
+    if (event === 'PASSWORD_RECOVERY'){
+      showSetPasswordMode();
+      return;
+    }
+    if (recovering) return;
+    if (event === 'SIGNED_IN' && session && redirectKind){
+      setTimeout(function(){
+        if (!recovering) onAuthed();
+      }, 100);
+    }
   });
+
+  if (!redirectKind){
+    client.auth.getSession().then(function(res){
+      if (!recovering && res.data.session) onAuthed();
+    });
+  }
 
   // ---------- Data ----------
 
