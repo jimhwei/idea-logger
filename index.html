@@ -384,6 +384,17 @@
     resize: vertical;
     min-height: 44px;
   }
+  input.note-input { min-height: 0; }
+
+  .save-status {
+    margin-left: 8px;
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 10.5px;
+  }
+  .save-status.ok { color: var(--active); }
+  .save-status.error { color: var(--danger); }
+
   .detail-actions {
     display: flex;
     flex-wrap: wrap;
@@ -1033,23 +1044,59 @@
     return row;
   }
 
+  // Autosaves a text field of an idea (debounced + on blur) and shows save status.
+  function bindAutosave(input, field, idea){
+    var status = input.closest('.detail-field').querySelector('.save-status');
+    var timer = null;
+    var lastSaved = idea[field] || "";
+
+    function setStatus(text, cls){
+      status.textContent = text;
+      status.className = 'save-status' + (cls ? ' ' + cls : '');
+    }
+
+    function save(){
+      clearTimeout(timer);
+      var value = input.value;
+      if (value === lastSaved) return;
+      setStatus('saving…');
+      var updated_at = new Date().toISOString();
+      var patch = { updated_at: updated_at };
+      patch[field] = value;
+      client.from('ideas').update(patch).eq('id', idea.id).select('id').then(function(res){
+        if (res.error){ setStatus('not saved: ' + res.error.message, 'error'); return; }
+        if (!res.data || !res.data.length){ setStatus('not saved: no row updated', 'error'); return; }
+        lastSaved = value;
+        idea[field] = value;
+        idea.updated_at = updated_at;
+        if (input.value === value) setStatus('saved ✓', 'ok');
+      });
+    }
+
+    input.addEventListener('input', function(){
+      setStatus('unsaved…');
+      clearTimeout(timer);
+      timer = setTimeout(save, 800);
+    });
+    input.addEventListener('blur', save);
+  }
+
   function renderDetail(idea){
     var detail = document.createElement('div');
     detail.className = 'row-detail';
     detail.addEventListener('click', function(e){ e.stopPropagation(); });
 
-    var triggerHtml = idea.trigger_note
-      ? '<div class="detail-value">' + escapeHtml(idea.trigger_note) + '</div>'
-      : '<div class="detail-value empty-val">not recorded</div>';
-
     detail.innerHTML =
       '<div class="detail-field">' +
-        '<span class="detail-label">Trigger</span>' + triggerHtml +
+        '<span class="detail-label">Trigger <span class="save-status"></span></span>' +
+        '<input type="text" class="note-input" data-role="trigger_note" maxlength="200" placeholder="What triggered it?">' +
       '</div>' +
       '<div class="detail-field">' +
-        '<span class="detail-label">Note</span>' +
+        '<span class="detail-label">Note <span class="save-status"></span></span>' +
         '<textarea class="note-input" data-role="note" placeholder="Add a note — reasoning, next step, why you archived it…">' + escapeHtml(idea.note || "") + '</textarea>' +
       '</div>';
+
+    detail.querySelector('[data-role="trigger_note"]').value = idea.trigger_note || "";
 
     detail.insertBefore(renderDetailGut(idea), detail.lastChild);
 
@@ -1084,15 +1131,8 @@
 
     detail.appendChild(actions);
 
-    var noteArea = detail.querySelector('[data-role="note"]');
-    noteArea.addEventListener('blur', function(){
-      var updated_at = new Date().toISOString();
-      client.from('ideas').update({ note: noteArea.value, updated_at: updated_at }).eq('id', idea.id).then(function(res){
-        if (res.error){ alert(res.error.message); return; }
-        idea.note = noteArea.value;
-        idea.updated_at = updated_at;
-      });
-    });
+    bindAutosave(detail.querySelector('[data-role="trigger_note"]'), 'trigger_note', idea);
+    bindAutosave(detail.querySelector('[data-role="note"]'), 'note', idea);
 
     return detail;
   }
